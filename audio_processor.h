@@ -7,7 +7,7 @@ class audio_processor
 {
 	public:
 		void init(pAudioDevices pall_audio_devices);
-		void start();
+		void start(BOOL loopback, BOOL speakers);
 		INT read_audio(BYTE* input_data, UINT32 * num_frames_availabe);
 		INT write_audio(BYTE* output_data, UINT32 * num_frames_availabe);
 		INT SetFormat(WAVEFORMATEX* pwfx);

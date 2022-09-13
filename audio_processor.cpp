@@ -10,7 +10,7 @@ int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe)
 
 		for (int i = 0; i < *pdata_blocks_num; i ++)
 		{
-			transfer_buffer[i] = bData[i] / 4;
+			transfer_buffer[i] = bData[i] / 1;
 			*pread_frames_num = *pread_frames_num + 1;
 		}
 		sender.send_packet((char*)bData, *pnum_frames_availabe * format.Format.nChannels);
@@ -76,7 +76,7 @@ void audio_processor::init(pAudioDevices pall_audio_devices)
 	sender.init("27015");
 }
 
-void audio_processor::start()
+void audio_processor::start(BOOL loopback, BOOL speakers)
 {
 	HRESULT hr;
 	REFERENCE_TIME hnsRequestedDuration = REFTIMES_PER_SEC;
@@ -86,19 +86,40 @@ void audio_processor::start()
 
 	//numFramesAvailable = 100000;
 
-	hr = pall_audio_devices->pEndpointInputDefault->Activate(
-		IID_IAudioClient, CLSCTX_ALL,
-		NULL, (void**)& (pall_audio_devices->pAudioClientInput));
+	if (loopback)
+	{
 
-	hr = pall_audio_devices->pAudioClientInput->GetMixFormat(&pwfx);
+		hr = pall_audio_devices->pEndpointOutputDefault->Activate(
+			IID_IAudioClient, CLSCTX_ALL,
+			NULL, (void**)&(pall_audio_devices->pAudioClientInput));
 
-	hr = pall_audio_devices->pAudioClientInput->Initialize(
-		AUDCLNT_SHAREMODE_SHARED,
-		0,
-		hnsRequestedDuration,
-		0,
-		pwfx,
-		NULL);
+		hr = pall_audio_devices->pAudioClientInput->GetMixFormat(&pwfx);
+
+		hr = pall_audio_devices->pAudioClientInput->Initialize(
+			AUDCLNT_SHAREMODE_SHARED,
+			AUDCLNT_STREAMFLAGS_LOOPBACK,
+			hnsRequestedDuration,
+			0,
+			pwfx,
+			NULL);
+	}
+	else
+	{
+
+		hr = pall_audio_devices->pEndpointInputDefault->Activate(
+			IID_IAudioClient, CLSCTX_ALL,
+			NULL, (void**)&(pall_audio_devices->pAudioClientInput));
+
+		hr = pall_audio_devices->pAudioClientInput->GetMixFormat(&pwfx);
+
+		hr = pall_audio_devices->pAudioClientInput->Initialize(
+			AUDCLNT_SHAREMODE_SHARED,
+			0,
+			hnsRequestedDuration,
+			0,
+			pwfx,
+			NULL);
+	}
 
 	// Get the size of the allocated buffer.
 	hr = pall_audio_devices->pAudioClientInput->GetBufferSize(&bufferFrameCount);
@@ -127,10 +148,18 @@ void audio_processor::start()
 	//		eRender, eConsole, &pDeviceOutput);
 	//}
 
-
-	hr = pall_audio_devices->pEndpointOutputDefault->Activate(
-		IID_IAudioClient, CLSCTX_ALL,
-		NULL, (void**)&(pall_audio_devices->pAudioClientOutput));
+	if (speakers)
+	{
+		hr = pall_audio_devices->pEndpointOutputDefault->Activate(
+			IID_IAudioClient, CLSCTX_ALL,
+			NULL, (void**)&(pall_audio_devices->pAudioClientOutput));
+	}
+	else
+	{
+		hr = pall_audio_devices->pEndpointCable->Activate(
+			IID_IAudioClient, CLSCTX_ALL,
+			NULL, (void**)&(pall_audio_devices->pAudioClientOutput));
+	}
 
 	hr = pall_audio_devices->pAudioClientOutput->GetMixFormat(&pwfx);
 
