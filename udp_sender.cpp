@@ -9,7 +9,7 @@ struct addrinfo* result = NULL,
     hints;
 
 int iResult;
-const int BUFLEN = 512;
+const int BUFLEN = 88200;
 char recvbuf[BUFLEN];
 int recvbuflen = BUFLEN;
 
