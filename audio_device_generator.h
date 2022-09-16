@@ -21,6 +21,7 @@ typedef struct audio_devices
 	IMMDevice* pEndpointOutputDefault = NULL;
 	IPropertyStore* pOutputDefaultProps = NULL;
 	IMMDevice* pEndpointCable = NULL;
+	IMMDevice* pEndpointMic = NULL;
 	IMMDevice* pInputEndpoint[20];
 	IPropertyStore* pInputProps[20];
 	LPWSTR pInputwszID[20];
@@ -34,9 +35,10 @@ typedef struct audio_devices
 	IMMDeviceEnumerator* pEnumerator = NULL;
 	IAudioClient* pAudioClientInput = NULL;
 	IAudioClient* pAudioClientOutput = NULL;
-	IAudioClient* pAudioClientCable = NULL;
+	IAudioClient* pAudioClientMic = NULL;
 	IAudioCaptureClient* pCaptureClient = NULL;
 	IAudioRenderClient* pRenderClient = NULL;
+	IAudioCaptureClient* pMicClient = NULL;
 	IAudioRenderClient* pCableClient = NULL;
 
 

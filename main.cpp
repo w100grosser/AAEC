@@ -5,7 +5,7 @@ audio_device_generator my_audio_device_generator;
 int main()
 {
 	printf("yes");
-	BOOL loopback = true;
+	BOOL loopback = false;
 	BOOL speakers = false;
 	AudioDevices all_audio_devices;
 	pAudioDevices pall_audio_devices = &all_audio_devices;
