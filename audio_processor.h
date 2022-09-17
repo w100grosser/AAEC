@@ -10,6 +10,7 @@ class audio_processor
 		void start(BOOL loopback, BOOL speakers);
 		INT read_audio(BYTE* input_data, UINT32 * num_frames_availabe, UINT32 * ppointer, float* pTransferBuffer);
 		INT write_audio(BYTE* output_data, UINT32 * num_frames_availabe, UINT32 * ppointer, float* pTransferBuffer);
+		INT process_audio(float* mic_data, float* speakers_data, float* output_data, INT32 pmic_data_pointer, INT32 pspeakers_data_pointer);
 		INT SetFormat(WAVEFORMATEX* pwfx);
 		void InputThreadFunction();
 		void OutputThreadFunction();
@@ -41,5 +42,8 @@ class audio_processor
 		thread * pCableThread;
 		WAVEFORMATEX* pwfx;
 		packet_sender sender;
+		fftw_plan* pfftw_plan;
+		DOUBLE* pfft_input;
+		DOUBLE* pfft_output;
 };
 

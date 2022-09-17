@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <Functiondiscoverykeys_devpkey.h>
 #include <thread>
+#include <fftw3.h>
 
 #define REFTIMES_PER_SEC  10000000
 #define REFTIMES_PER_MILLISEC  10000

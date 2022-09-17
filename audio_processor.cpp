@@ -89,6 +89,86 @@ int audio_processor::SetFormat(WAVEFORMATEX* pwfx)
 void audio_processor::init(pAudioDevices pall_audio_devices)
 {
 	audio_processor::pall_audio_devices = pall_audio_devices;
+	//fftw_plan fftw_plan_r2r_1d(int n, double* in, double* out, fftw_r2r_kind kind, unsigned flags);
+	pfft_input = (double*)fftw_malloc(sizeof(double) * 1024);
+	pfft_output = (double*)fftw_malloc(sizeof(double) * 1024);
+	fftw_plan fft_dct = fftw_plan_r2r_1d(1024, pfft_input, pfft_output, FFTW_REDFT10, FFTW_ESTIMATE);
+	fftw_plan fft_idct = fftw_plan_r2r_1d(1024, pfft_output, pfft_input, FFTW_REDFT01, FFTW_ESTIMATE);
+
+	double * input_array;
+	double * output_array;
+	for (int i = 0; i < 1024; i++)
+	{
+		pfft_input[i] = ((i + 1) % 2) * 200;
+		pfft_output[i] = (double)0;
+	}
+	//printf("\noutput_array: %f %f %f %f %f %f %f\n", output_array[0], output_array[1], output_array[2], output_array[3], output_array[4], output_array[5]);
+	//printf("\ninput_array: %f %f %f %f %f %f %f\n", input_array[0], input_array[1], input_array[2], input_array[3], input_array[4], input_array[5]);
+	input_array = pfft_input;
+	output_array  = pfft_output;
+	printf("\ninput_array: \n");
+	for (int i = 0; i < 128; i++)
+	{
+		printf("%f ", input_array[i]);
+	}
+	printf("\noutput_array: \n");
+	for (int i = 0; i < 128; i++)
+	{
+		printf("%f ", output_array[i]);
+	}
+	fftw_execute(fft_dct);
+
+	for (int i = 0; i < 1024; i++)
+	{
+		pfft_output[i] = pfft_output[i] / 1024 / 2;
+	}
+	printf("\ninput_array: \n");
+	for (int i = 0; i < 128; i++)
+	{
+		printf("%f ", input_array[i]);
+	}
+	printf("\noutput_array: \n");
+	for (int i = 0; i < 128; i++)
+	{
+		printf("%f ", output_array[i]);
+	}
+	fftw_execute(fft_idct);
+	printf("\ninput_array: \n");
+	for (int i = 0; i < 128; i++)
+	{
+		printf("%f ", input_array[i]);
+	}
+	printf("\noutput_array: \n");
+	for (int i = 0; i < 128; i++)
+	{
+		printf("%f ", output_array[i]);
+	}
+	fftw_execute(fft_dct);
+	for (int i = 0; i < 1024; i++)
+	{
+		pfft_output[i] = pfft_output[i] / 1024 / 2;
+	}
+	printf("\ninput_array: \n");
+	for (int i = 0; i < 128; i++)
+	{
+		printf("%f ", input_array[i]);
+	}
+	printf("\noutput_array: \n");
+	for (int i = 0; i < 128; i++)
+	{
+		printf("%f ", output_array[i]);
+	}
+	fftw_execute(fft_idct);
+	printf("\ninput_array: \n");
+	for (int i = 0; i < 128; i++)
+	{
+		printf("%f ", input_array[i]);
+	}
+	printf("\noutput_array: \n");
+	for (int i = 0; i < 128; i++)
+	{
+		printf("%f ", output_array[i]);
+	}
 	sender.init("27015");
 }
 
@@ -401,4 +481,10 @@ void audio_processor::MicThreadFunction()
 			}
 		}
 	}
+}
+
+INT process_audio(float* mic_data, float* speakers_data, float* output_data, INT32 pmic_data_pointer, INT32 pspeakers_data_pointer)
+{
+	//fft
+	return 1;
 }

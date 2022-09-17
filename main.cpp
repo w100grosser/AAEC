@@ -4,6 +4,9 @@ audio_device_generator my_audio_device_generator;
 
 int main()
 {
+
+
+
 	printf("yes");
 	BOOL loopback = false;
 	BOOL speakers = false;
