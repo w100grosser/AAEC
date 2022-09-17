@@ -2,6 +2,7 @@
 
 int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe, UINT32 * ppointer, float * pTransferBuffer)
 {
+
 	if (pinput_data != NULL && *(pwrite) && !*(pread))
 	{
 		*pread = false;
