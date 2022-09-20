@@ -1,33 +1,37 @@
 #include "audio_processor.h"
 
-int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe, UINT32 * ppointer, float * pTransferBuffer)
+int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe, UINT32* ppointer, float* pTransferBuffer, int index)
 {
 
-	if (pinput_data != NULL && *(pwrite) && !*(pread))
+	if (pinput_data != NULL && !pread[index])
 	{
 		*pread = false;
 		float* bData = (float*)pinput_data;
-		*pdata_blocks_num = *pnum_frames_availabe *format.Format.nChannels;
-		if (*ppointer + *pdata_blocks_num >= 88200)
+		local_data_blocks_num[index] += *pnum_frames_availabe * format.Format.nChannels;
+		if (index == 0)
 		{
-			*ppointer = 0;
+			*pdata_blocks_num += local_data_blocks_num[index];
 		}
-		for (int i = 0; i < *pdata_blocks_num; i ++)
+		if (ppointer[index] + local_data_blocks_num[index] >= 88200)
 		{
-			pTransferBuffer[*ppointer + i] = bData[i] / 1;
-			*pread_frames_num = *pread_frames_num + 1;
-			if (i % 2 == 0)
-			{
-				transfer_buffer_left[(*ppointer + i) / 2] = (bData[i] + bData[i + 1]) / 2;
-			}
+			ppointer[index] = 0;
 		}
-		sender.send_packet((char*)transfer_buffer_left, 44100);
-		sender.send_packet((char*)&transfer_buffer_left[44100 / 4], 44100);
-		sender.send_packet((char*)&transfer_buffer_left[2 * 44100 / 4], 44100);
-		sender.send_packet((char*)&transfer_buffer_left[3 * 44100 / 4], 44100);
-		(*ppointer) += *pdata_blocks_num;
-		*pread = true;
-		*pwrite = false;
+		for (int i = 0; i < local_data_blocks_num[index]; i += 2)
+		{
+			pTransferBuffer[ppointer[index] + i] = (bData[i] + bData[i + 1]) / 2;
+			*pread_frames_num = local_data_blocks_num[index] + 1;
+			transfer_buffer_left[(ppointer[index] + i)] = bData[i];
+		}
+		//sender.send_packet((char*)transfer_buffer_left, 44100);
+		//sender.send_packet((char*)&transfer_buffer_left[44100 / 4], 44100);
+		//sender.send_packet((char*)&transfer_buffer_left[2 * 44100 / 4], 44100);
+		//sender.send_packet((char*)&transfer_buffer_left[3 * 44100 / 4], 44100);
+		if (local_data_blocks_num[index] >= 1024)
+		{
+			pread[index] = true;
+			local_data_blocks_num[index] = 0;
+		}
+		ppointer[index] += local_data_blocks_num[index];
 	}
 	else {
 		*pnum_frames_availabe = 0;
@@ -35,32 +39,59 @@ int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe,
 	return 0;
 }
 
-int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32 * ppointer, float* pTransferBuffer)
+int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32** ppointer, float** pTransferBuffer)
 {
-	if (output_data != NULL && *(pread) && !*(pwrite))
+
+	if (output_data != NULL && pread[0] && pread[1])
 	{
-		INT32 current;
+
+		INT32 current[2];
 		*pwrite = false;
 		float* bData = (float*)output_data;
-		if (*pnum_frames_availabe < *pdata_blocks_num / 2) {
-		}
-		else {
-			*pnum_frames_availabe = *pdata_blocks_num / 2;
-		}
-		current = (*ppointer) - *pnum_frames_availabe * format.Format.nChannels;
-		if (current < 0)
+		*pnum_frames_availabe = 1024;
+		//if (*pnum_frames_availabe < *pdata_blocks_num / 2) {
+		//}
+		//else {
+		//	*pnum_frames_availabe = *pdata_blocks_num / 2;
+		//}
+
+		for (int i = 0; i < 2; i++)
 		{
-			current = 0;
+			current[i] = *(ppointer[i]) - 1024;
+			if (current[i] < 0)
+			{
+				current[i] = 0;
+			}
 		}
+
+		for(int i = 0; i < 1024;i++ )
+		{
+			pfft_input_mic[i] = pTransferBuffer[0][current[0] + i];
+			pfft_input_speakers[i] = pTransferBuffer[1][current[1] + i];
+		}
+		fftw_execute(pfft_dct_mic);
+		fftw_execute(pfft_dct_speakers);
+
+		for (int i = 0; i < 1024; i++)
+		{
+			pfft_output_mic[i] -= pfft_output_speakers[i]/2;
+		}
+
+		fftw_execute(pfft_idct_mic);
+
 		//printf("%d\n", current);
-		for (int i = 0; i < *pnum_frames_availabe * format.Format.nChannels; i++)
+		for (int i = 0; i < 1024 * format.Format.nChannels; i+=2)
 		{
-			bData[i] = pTransferBuffer[current + i];
+			bData[i] = pfft_input_mic[i];
+			bData[i + 1] = pfft_input_mic[i];
+
 			*pwritten_frames_num = *pwritten_frames_num + 1;
 		}
+
 		//sender.send_packet((char*)bData, *pnum_frames_availabe * format.Format.nChannels);
-		*pread = false;
-		*pwrite = true;
+		pread[0] = false;
+		pread[1] = false;
+
 	}
 	else {
 		*pnum_frames_availabe = 0;
@@ -89,88 +120,30 @@ int audio_processor::SetFormat(WAVEFORMATEX* pwfx)
 
 void audio_processor::init(pAudioDevices pall_audio_devices)
 {
+	pPointer[0] = (UINT32*)fftw_malloc(sizeof(UINT32));
+	pPointer[1] = (UINT32*)fftw_malloc(sizeof(UINT32));
+
+	*pPointer[0] = 0;
+	*pPointer[1] = 0;
+	ptransfer_buffer[0] = (float*)fftw_malloc(sizeof(float) * 88200);
+	ptransfer_buffer[1] = (float*)fftw_malloc(sizeof(float) * 88200);
+
 	audio_processor::pall_audio_devices = pall_audio_devices;
 	//fftw_plan fftw_plan_r2r_1d(int n, double* in, double* out, fftw_r2r_kind kind, unsigned flags);
-	pfft_input = (double*)fftw_malloc(sizeof(double) * 1024);
-	pfft_output = (double*)fftw_malloc(sizeof(double) * 1024);
-	fftw_plan fft_dct = fftw_plan_r2r_1d(1024, pfft_input, pfft_output, FFTW_REDFT10, FFTW_ESTIMATE);
-	fftw_plan fft_idct = fftw_plan_r2r_1d(1024, pfft_output, pfft_input, FFTW_REDFT01, FFTW_ESTIMATE);
+	pfft_input_mic = (double*)fftw_malloc(sizeof(double) * 1024);
+	pfft_input_speakers = (double*)fftw_malloc(sizeof(double) * 1024);
+	pfft_output_mic = (double*)fftw_malloc(sizeof(double) * 1024);
+	pfft_output_speakers = (double*)fftw_malloc(sizeof(double) * 1024);
+	fftw_plan fft_dct_mic = fftw_plan_r2r_1d(1024, pfft_input_mic, pfft_output_mic, FFTW_REDFT10, FFTW_ESTIMATE);
+	fftw_plan fft_idct_mic = fftw_plan_r2r_1d(1024, pfft_output_mic, pfft_input_mic, FFTW_REDFT01, FFTW_ESTIMATE);
+	fftw_plan fft_dct_speakers = fftw_plan_r2r_1d(1024, pfft_input_speakers, pfft_output_speakers, FFTW_REDFT10, FFTW_ESTIMATE);
+	fftw_plan fft_idct_speakers = fftw_plan_r2r_1d(1024, pfft_output_speakers, pfft_input_speakers, FFTW_REDFT01, FFTW_ESTIMATE);
 
-	double * input_array;
-	double * output_array;
-	for (int i = 0; i < 1024; i++)
-	{
-		pfft_input[i] = ((i + 1) % 2) * 200;
-		pfft_output[i] = (double)0;
-	}
-	//printf("\noutput_array: %f %f %f %f %f %f %f\n", output_array[0], output_array[1], output_array[2], output_array[3], output_array[4], output_array[5]);
-	//printf("\ninput_array: %f %f %f %f %f %f %f\n", input_array[0], input_array[1], input_array[2], input_array[3], input_array[4], input_array[5]);
-	input_array = pfft_input;
-	output_array  = pfft_output;
-	printf("\ninput_array: \n");
-	for (int i = 0; i < 128; i++)
-	{
-		printf("%f ", input_array[i]);
-	}
-	printf("\noutput_array: \n");
-	for (int i = 0; i < 128; i++)
-	{
-		printf("%f ", output_array[i]);
-	}
-	fftw_execute(fft_dct);
+	pfft_dct_mic = fft_dct_mic;
+	pfft_idct_mic = fft_idct_mic;
+	pfft_dct_speakers = fft_dct_speakers;
+	pfft_idct_speakers = fft_idct_speakers;
 
-	for (int i = 0; i < 1024; i++)
-	{
-		pfft_output[i] = pfft_output[i] / 1024 / 2;
-	}
-	printf("\ninput_array: \n");
-	for (int i = 0; i < 128; i++)
-	{
-		printf("%f ", input_array[i]);
-	}
-	printf("\noutput_array: \n");
-	for (int i = 0; i < 128; i++)
-	{
-		printf("%f ", output_array[i]);
-	}
-	fftw_execute(fft_idct);
-	printf("\ninput_array: \n");
-	for (int i = 0; i < 128; i++)
-	{
-		printf("%f ", input_array[i]);
-	}
-	printf("\noutput_array: \n");
-	for (int i = 0; i < 128; i++)
-	{
-		printf("%f ", output_array[i]);
-	}
-	fftw_execute(fft_dct);
-	for (int i = 0; i < 1024; i++)
-	{
-		pfft_output[i] = pfft_output[i] / 1024 / 2;
-	}
-	printf("\ninput_array: \n");
-	for (int i = 0; i < 128; i++)
-	{
-		printf("%f ", input_array[i]);
-	}
-	printf("\noutput_array: \n");
-	for (int i = 0; i < 128; i++)
-	{
-		printf("%f ", output_array[i]);
-	}
-	fftw_execute(fft_idct);
-	printf("\ninput_array: \n");
-	for (int i = 0; i < 128; i++)
-	{
-		printf("%f ", input_array[i]);
-	}
-	printf("\noutput_array: \n");
-	for (int i = 0; i < 128; i++)
-	{
-		printf("%f ", output_array[i]);
-	}
-	sender.init("27015");
 }
 
 void audio_processor::start(BOOL loopback, BOOL speakers)
@@ -372,7 +345,7 @@ void audio_processor::InputThreadFunction()
 					pData4 = NULL;  // Tell endpoint2local to write silence.
 				}
 
-				read_audio(pData4, &numFramesAvailable, pPointer, transfer_buffer_output);
+				read_audio(pData4, &numFramesAvailable, pPointer[1], ptransfer_buffer[1], 1);
 
 				//printf("%d, %d", numFramesAvailable, pData4[0]);
 				hr = pall_audio_devices->pCaptureClient->ReleaseBuffer(numFramesAvailable);
@@ -414,7 +387,7 @@ void audio_processor::OutputThreadFunction()
 		hr = pall_audio_devices->pRenderClient->GetBuffer(numFramesAvailable, &pData);
 
 		//    // Get next 1/2-second of data from the audio source.
-		write_audio(pData, &numFramesAvailable, pPointerMic, transfer_buffer_mic);
+		write_audio(pData, &numFramesAvailable, pPointer, ptransfer_buffer);
 
 		// Sleep for half the buffer duration.
 		if (numFramesAvailable > 0) {
@@ -473,7 +446,7 @@ void audio_processor::MicThreadFunction()
 					pData4 = NULL;  // Tell endpoint2local to write silence.
 				}
 
-				read_audio(pData4, &numFramesAvailable, pPointerMic, transfer_buffer_mic);
+				read_audio(pData4, &numFramesAvailable, pPointer[0], ptransfer_buffer[0], 0);
 
 				//printf("%d, %d", numFramesAvailable, pData4[0]);
 				hr = pall_audio_devices->pMicClient->ReleaseBuffer(numFramesAvailable);

@@ -8,8 +8,8 @@ class audio_processor
 	public:
 		void init(pAudioDevices pall_audio_devices);
 		void start(BOOL loopback, BOOL speakers);
-		INT read_audio(BYTE* input_data, UINT32 * num_frames_availabe, UINT32 * ppointer, float* pTransferBuffer);
-		INT write_audio(BYTE* output_data, UINT32 * num_frames_availabe, UINT32 * ppointer, float* pTransferBuffer);
+		INT read_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32* ppointer, float* pTransferBuffer, int index);
+		INT write_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32** ppointer, float** pTransferBuffer);
 		INT process_audio(float* mic_data, float* speakers_data, float* output_data, INT32 pmic_data_pointer, INT32 pspeakers_data_pointer);
 		INT SetFormat(WAVEFORMATEX* pwfx);
 		void InputThreadFunction();
@@ -22,18 +22,19 @@ class audio_processor
 		float transfer_buffer_right[44100];
 		float transfer_buffer_mic[88200];
 		float transfer_buffer_output[88200];
-		UINT32 data_blocks_num = 44100;
+		float * ptransfer_buffer[2];
+		UINT32 data_blocks_num = 0;
+		UINT32 local_data_blocks_num[2] = {0, 0};
 		UINT32* pdata_blocks_num = &data_blocks_num;
-		BYTE read = true;
+		BYTE read[2] = { true, true };
 		BYTE write = false;
-		BYTE * pread = &read;
+		BYTE * pread = read;
 		BYTE * pwrite = &write;
 		UINT32 read_frames_num = 0;
 		UINT32 written_frames_num = 0;
 		UINT32 PointerMic = 0;
 		UINT32 * pPointerMic = &PointerMic;
-		UINT32 Pointer = 0;
-		UINT32* pPointer = &Pointer;
+		UINT32 * pPointer[2];
 		UINT32* pread_frames_num = &read_frames_num;
 		UINT32* pwritten_frames_num = &written_frames_num;
 		pAudioDevices pall_audio_devices;
@@ -42,8 +43,13 @@ class audio_processor
 		thread * pCableThread;
 		WAVEFORMATEX* pwfx;
 		packet_sender sender;
-		fftw_plan* pfftw_plan;
-		DOUBLE* pfft_input;
-		DOUBLE* pfft_output;
+		DOUBLE* pfft_input_mic;
+		DOUBLE* pfft_input_speakers;
+		DOUBLE* pfft_output_mic;
+		DOUBLE* pfft_output_speakers;
+		fftw_plan pfft_dct_mic;
+		fftw_plan pfft_idct_mic;
+		fftw_plan pfft_dct_speakers;
+		fftw_plan pfft_idct_speakers;
 };
 
