@@ -1,6 +1,6 @@
 #include "audio_processor.h"
 
-int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe, UINT32* ppointer, float* pTransferBuffer, int index)
+int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe, UINT32* ppointer, float* pTransferBuffer_left, float* pTransferBuffer_right, int index)
 {
 
 	if (pinput_data != NULL && !pread[index])
@@ -12,13 +12,14 @@ int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe,
 		{
 			*pdata_blocks_num += local_data_blocks_num[index];
 		}
-		if (ppointer[index] + local_data_blocks_num[index] >= 88200)
+		if (ppointer[index] + *pnum_frames_availabe >= 88200)
 		{
 			ppointer[index] = 0;
 		}
-		for (int i = 0; i < local_data_blocks_num[index]; i += 2)
+		for (int i = 0; i < *pnum_frames_availabe * format.Format.nChannels; i += 2)
 		{
-			pTransferBuffer[ppointer[index] + i] = (bData[i] + bData[i + 1]) / 2;
+			pTransferBuffer_left[ppointer[index] + i /2] = bData[i];
+			pTransferBuffer_right[ppointer[index] + i / 2] = bData[i+1];
 			*pread_frames_num = local_data_blocks_num[index] + 1;
 			transfer_buffer_left[(ppointer[index] + i)] = bData[i];
 		}
@@ -31,7 +32,7 @@ int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe,
 			pread[index] = true;
 			local_data_blocks_num[index] = 0;
 		}
-		ppointer[index] += local_data_blocks_num[index];
+		ppointer[index] += local_data_blocks_num[index] /2;
 	}
 	else {
 		*pnum_frames_availabe = 0;
@@ -39,12 +40,13 @@ int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe,
 	return 0;
 }
 
-int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32** ppointer, float** pTransferBuffer)
+int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32** ppointer, float** pTransferBuffer_left, float** pTransferBuffer_right)
 {
 
 	if (output_data != NULL && pread[0] && pread[1])
 	{
 
+		//printf("%d\n", *pnum_frames_availabe);
 		INT32 current[2];
 		*pwrite = false;
 		float* bData = (float*)output_data;
@@ -66,24 +68,34 @@ int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe
 
 		for(int i = 0; i < 1024;i++ )
 		{
-			pfft_input_mic[i] = pTransferBuffer[0][current[0] + i];
-			pfft_input_speakers[i] = pTransferBuffer[1][current[1] + i];
-		}
-		fftw_execute(pfft_dct_mic);
-		fftw_execute(pfft_dct_speakers);
-
-		for (int i = 0; i < 1024; i++)
-		{
-			pfft_output_mic[i] -= pfft_output_speakers[i]/2;
+			pfft_input_mic_left[i] = pTransferBuffer_left[0][current[0] + i];
+			pfft_input_speakers_left[i] = pTransferBuffer_left[1][current[1] + i];
+			pfft_input_mic_right[i] = pTransferBuffer_right[0][current[0] + i];
+			pfft_input_speakers_right[i] = pTransferBuffer_right[1][current[1] + i];
 		}
 
-		fftw_execute(pfft_idct_mic);
+		//fftw_execute(*pfft_dct_mic_left);
+		//fftw_execute(*pfft_dct_mic_right);
+		//fftw_execute(*pfft_dct_speakers_left);
+		//fftw_execute(*pfft_dct_speakers_right);
 
-		//printf("%d\n", current);
+		//for (int i = 0; i < 1024; i++)
+		//{
+		//	pfft_output_mic_left[i] = pfft_output_mic_left[i] / 1024 / 2;
+		//	pfft_output_mic_right[i] = pfft_output_mic_right[i] / 1024 / 2;
+		//	pfft_output_speakers_left[i] = pfft_output_mic_left[i] / 1024 / 2;
+		//	pfft_output_speakers_right[i] = pfft_output_mic_right[i] / 1024 / 2;
+		//}
+
+		//fftw_execute(*pfft_idct_mic_left);
+		//fftw_execute(*pfft_idct_mic_right);
+		//fftw_execute(*pfft_idct_speakers_left);
+		//fftw_execute(*pfft_idct_speakers_right);
+
 		for (int i = 0; i < 1024 * format.Format.nChannels; i+=2)
 		{
-			bData[i] = pfft_input_mic[i];
-			bData[i + 1] = pfft_input_mic[i];
+			bData[i] = pTransferBuffer_left[0][current[0] + i/2];
+			bData[i + 1] = pTransferBuffer_right[0][current[0] + i / 2];
 
 			*pwritten_frames_num = *pwritten_frames_num + 1;
 		}
@@ -125,24 +137,38 @@ void audio_processor::init(pAudioDevices pall_audio_devices)
 
 	*pPointer[0] = 0;
 	*pPointer[1] = 0;
-	ptransfer_buffer[0] = (float*)fftw_malloc(sizeof(float) * 88200);
-	ptransfer_buffer[1] = (float*)fftw_malloc(sizeof(float) * 88200);
+	ptransfer_buffer_left[0] = (float*)fftw_malloc(sizeof(float) * 88200);
+	ptransfer_buffer_left[1] = (float*)fftw_malloc(sizeof(float) * 88200);
+	ptransfer_buffer_right[0] = (float*)fftw_malloc(sizeof(float) * 88200);
+	ptransfer_buffer_right[1] = (float*)fftw_malloc(sizeof(float) * 88200);
 
 	audio_processor::pall_audio_devices = pall_audio_devices;
 	//fftw_plan fftw_plan_r2r_1d(int n, double* in, double* out, fftw_r2r_kind kind, unsigned flags);
-	pfft_input_mic = (double*)fftw_malloc(sizeof(double) * 1024);
-	pfft_input_speakers = (double*)fftw_malloc(sizeof(double) * 1024);
-	pfft_output_mic = (double*)fftw_malloc(sizeof(double) * 1024);
-	pfft_output_speakers = (double*)fftw_malloc(sizeof(double) * 1024);
-	fftw_plan fft_dct_mic = fftw_plan_r2r_1d(1024, pfft_input_mic, pfft_output_mic, FFTW_REDFT10, FFTW_ESTIMATE);
-	fftw_plan fft_idct_mic = fftw_plan_r2r_1d(1024, pfft_output_mic, pfft_input_mic, FFTW_REDFT01, FFTW_ESTIMATE);
-	fftw_plan fft_dct_speakers = fftw_plan_r2r_1d(1024, pfft_input_speakers, pfft_output_speakers, FFTW_REDFT10, FFTW_ESTIMATE);
-	fftw_plan fft_idct_speakers = fftw_plan_r2r_1d(1024, pfft_output_speakers, pfft_input_speakers, FFTW_REDFT01, FFTW_ESTIMATE);
+	pfft_input_mic_left = (double*)fftw_malloc(sizeof(double) * 1024);
+	pfft_input_mic_right = (double*)fftw_malloc(sizeof(double) * 1024);
+	pfft_input_speakers_left = (double*)fftw_malloc(sizeof(double) * 1024);
+	pfft_input_speakers_right = (double*)fftw_malloc(sizeof(double) * 1024);
+	pfft_output_mic_left = (double*)fftw_malloc(sizeof(double) * 1024);
+	pfft_output_mic_right = (double*)fftw_malloc(sizeof(double) * 1024);
+	pfft_output_speakers_left = (double*)fftw_malloc(sizeof(double) * 1024);
+	pfft_output_speakers_right = (double*)fftw_malloc(sizeof(double) * 1024);
+	fftw_plan fft_dct_mic_left = fftw_plan_r2r_1d(1024, pfft_input_mic_left, pfft_output_mic_left, FFTW_REDFT10, FFTW_ESTIMATE);
+	fftw_plan fft_dct_mic_right = fftw_plan_r2r_1d(1024, pfft_input_mic_right, pfft_output_mic_right, FFTW_REDFT10, FFTW_ESTIMATE);
+	fftw_plan fft_idct_mic_left = fftw_plan_r2r_1d(1024, pfft_output_mic_left, pfft_input_mic_left, FFTW_REDFT01, FFTW_ESTIMATE);
+	fftw_plan fft_idct_mic_right = fftw_plan_r2r_1d(1024, pfft_output_mic_right, pfft_input_mic_right, FFTW_REDFT01, FFTW_ESTIMATE);
+	fftw_plan fft_dct_speakers_left = fftw_plan_r2r_1d(1024, pfft_input_speakers_left, pfft_output_speakers_left, FFTW_REDFT10, FFTW_ESTIMATE);
+	fftw_plan fft_dct_speakers_right = fftw_plan_r2r_1d(1024, pfft_input_speakers_right, pfft_output_speakers_right, FFTW_REDFT10, FFTW_ESTIMATE);
+	fftw_plan fft_idct_speakers_left = fftw_plan_r2r_1d(1024, pfft_output_speakers_left, pfft_input_speakers_left, FFTW_REDFT01, FFTW_ESTIMATE);
+	fftw_plan fft_idct_speakers_right = fftw_plan_r2r_1d(1024, pfft_output_speakers_right, pfft_input_speakers_right, FFTW_REDFT01, FFTW_ESTIMATE);
 
-	pfft_dct_mic = fft_dct_mic;
-	pfft_idct_mic = fft_idct_mic;
-	pfft_dct_speakers = fft_dct_speakers;
-	pfft_idct_speakers = fft_idct_speakers;
+	pfft_dct_mic_left = &fft_dct_mic_left;
+	pfft_dct_mic_right = &fft_dct_mic_right;
+	pfft_idct_mic_left = &fft_idct_mic_left;
+	pfft_idct_mic_right = &fft_idct_mic_right;
+	pfft_dct_speakers_left = &fft_dct_speakers_left;
+	pfft_dct_speakers_right = &fft_dct_speakers_right;
+	pfft_idct_speakers_left = &fft_idct_speakers_left;
+	pfft_idct_speakers_right = &fft_idct_speakers_right;
 
 }
 
@@ -345,7 +371,7 @@ void audio_processor::InputThreadFunction()
 					pData4 = NULL;  // Tell endpoint2local to write silence.
 				}
 
-				read_audio(pData4, &numFramesAvailable, pPointer[1], ptransfer_buffer[1], 1);
+				read_audio(pData4, &numFramesAvailable, pPointer[1], ptransfer_buffer_left[1], ptransfer_buffer_right[1], 1);
 
 				//printf("%d, %d", numFramesAvailable, pData4[0]);
 				hr = pall_audio_devices->pCaptureClient->ReleaseBuffer(numFramesAvailable);
@@ -387,7 +413,7 @@ void audio_processor::OutputThreadFunction()
 		hr = pall_audio_devices->pRenderClient->GetBuffer(numFramesAvailable, &pData);
 
 		//    // Get next 1/2-second of data from the audio source.
-		write_audio(pData, &numFramesAvailable, pPointer, ptransfer_buffer);
+		write_audio(pData, &numFramesAvailable, pPointer, ptransfer_buffer_left, ptransfer_buffer_right);
 
 		// Sleep for half the buffer duration.
 		if (numFramesAvailable > 0) {
@@ -446,7 +472,7 @@ void audio_processor::MicThreadFunction()
 					pData4 = NULL;  // Tell endpoint2local to write silence.
 				}
 
-				read_audio(pData4, &numFramesAvailable, pPointer[0], ptransfer_buffer[0], 0);
+				read_audio(pData4, &numFramesAvailable, pPointer[0], ptransfer_buffer_left[0], ptransfer_buffer_right[0], 0);
 
 				//printf("%d, %d", numFramesAvailable, pData4[0]);
 				hr = pall_audio_devices->pMicClient->ReleaseBuffer(numFramesAvailable);

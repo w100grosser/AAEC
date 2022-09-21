@@ -8,8 +8,8 @@ class audio_processor
 	public:
 		void init(pAudioDevices pall_audio_devices);
 		void start(BOOL loopback, BOOL speakers);
-		INT read_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32* ppointer, float* pTransferBuffer, int index);
-		INT write_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32** ppointer, float** pTransferBuffer);
+		INT read_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32* ppointer, float* pTransferBuffer_left, float* pTransferBuffer_right, int index);
+		INT write_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32** ppointer, float** pTransferBuffer_left, float** pTransferBuffer_right);
 		INT process_audio(float* mic_data, float* speakers_data, float* output_data, INT32 pmic_data_pointer, INT32 pspeakers_data_pointer);
 		INT SetFormat(WAVEFORMATEX* pwfx);
 		void InputThreadFunction();
@@ -22,7 +22,8 @@ class audio_processor
 		float transfer_buffer_right[44100];
 		float transfer_buffer_mic[88200];
 		float transfer_buffer_output[88200];
-		float * ptransfer_buffer[2];
+		float * ptransfer_buffer_left[2];
+		float* ptransfer_buffer_right[2];
 		UINT32 data_blocks_num = 0;
 		UINT32 local_data_blocks_num[2] = {0, 0};
 		UINT32* pdata_blocks_num = &data_blocks_num;
@@ -43,13 +44,24 @@ class audio_processor
 		thread * pCableThread;
 		WAVEFORMATEX* pwfx;
 		packet_sender sender;
-		DOUBLE* pfft_input_mic;
-		DOUBLE* pfft_input_speakers;
-		DOUBLE* pfft_output_mic;
-		DOUBLE* pfft_output_speakers;
-		fftw_plan pfft_dct_mic;
-		fftw_plan pfft_idct_mic;
-		fftw_plan pfft_dct_speakers;
-		fftw_plan pfft_idct_speakers;
+
+
+		DOUBLE * pfft_input_mic_left;
+		DOUBLE * pfft_input_mic_right;
+		DOUBLE * pfft_input_speakers_left;
+		DOUBLE * pfft_input_speakers_right;
+		DOUBLE * pfft_output_mic_left;
+		DOUBLE * pfft_output_mic_right;
+		DOUBLE * pfft_output_speakers_left;
+		DOUBLE * pfft_output_speakers_right;
+
+		fftw_plan* pfft_dct_mic_left;
+		fftw_plan* pfft_dct_mic_right;
+		fftw_plan* pfft_idct_mic_left;
+		fftw_plan* pfft_idct_mic_right;
+		fftw_plan* pfft_dct_speakers_left;
+		fftw_plan* pfft_dct_speakers_right;
+		fftw_plan* pfft_idct_speakers_left;
+		fftw_plan* pfft_idct_speakers_right;
 };
 
