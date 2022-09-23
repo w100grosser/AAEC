@@ -12,14 +12,14 @@ int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe,
 		{
 			*pdata_blocks_num += local_data_blocks_num[index];
 		}
-		if (ppointer[index] + *pnum_frames_availabe >= 88200)
+		if (ppointer[index] + *pnum_frames_availabe >= 44100)
 		{
 			ppointer[index] = 0;
 		}
 		for (int i = 0; i < *pnum_frames_availabe * format.Format.nChannels; i += 2)
 		{
-			pTransferBuffer_left[ppointer[index] + i /2] = bData[i];
-			pTransferBuffer_right[ppointer[index] + i / 2] = bData[i+1];
+			pTransferBuffer_left[ppointer[index] + i /2] = bData[i+1];
+			pTransferBuffer_right[ppointer[index] + i / 2] = bData[i];
 			*pread_frames_num = local_data_blocks_num[index] + 1;
 			transfer_buffer_left[(ppointer[index] + i)] = bData[i];
 		}
@@ -50,7 +50,10 @@ int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe
 		INT32 current[2];
 		*pwrite = false;
 		float* bData = (float*)output_data;
-		*pnum_frames_availabe = 1024;
+		if (*pnum_frames_availabe > 1024)
+		{
+			*pnum_frames_availabe = 1024;
+		}
 		//if (*pnum_frames_availabe < *pdata_blocks_num / 2) {
 		//}
 		//else {
@@ -66,13 +69,13 @@ int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe
 			}
 		}
 
-		for(int i = 0; i < 1024;i++ )
-		{
-			pfft_input_mic_left[i] = pTransferBuffer_left[0][current[0] + i];
-			pfft_input_speakers_left[i] = pTransferBuffer_left[1][current[1] + i];
-			pfft_input_mic_right[i] = pTransferBuffer_right[0][current[0] + i];
-			pfft_input_speakers_right[i] = pTransferBuffer_right[1][current[1] + i];
-		}
+		//for(int i = 0; i < 1024;i++ )
+		//{
+		//	pfft_input_mic_left[i] = pTransferBuffer_left[0][current[0] + i];
+		//	pfft_input_speakers_left[i] = pTransferBuffer_left[1][current[1] + i];
+		//	pfft_input_mic_right[i] = pTransferBuffer_right[0][current[0] + i];
+		//	pfft_input_speakers_right[i] = pTransferBuffer_right[1][current[1] + i];
+		//}
 
 		//fftw_execute(*pfft_dct_mic_left);
 		//fftw_execute(*pfft_dct_mic_right);
@@ -92,10 +95,11 @@ int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe
 		//fftw_execute(*pfft_idct_speakers_left);
 		//fftw_execute(*pfft_idct_speakers_right);
 
-		for (int i = 0; i < 1024 * format.Format.nChannels; i+=2)
+		for (int i = 0; i < *pnum_frames_availabe; i++)
 		{
-			bData[i] = pTransferBuffer_left[0][current[0] + i/2];
-			bData[i + 1] = pTransferBuffer_right[0][current[0] + i / 2];
+			//printf("\n%f\t%f", pTransferBuffer_left[0][current[0] + i / 2], pTransferBuffer_right[0][current[0] + i / 2]);
+			bData[2*i] = pTransferBuffer_left[0][current[0] + i];
+			bData[2 * i + 1] = pTransferBuffer_right[0][current[0] + i ];
 
 			*pwritten_frames_num = *pwritten_frames_num + 1;
 		}
