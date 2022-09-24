@@ -55,13 +55,13 @@ class audio_processor
 		DOUBLE * pfft_output_speakers_left = NULL;
 		DOUBLE * pfft_output_speakers_right = NULL;
 
-		fftw_plan* pfft_dct_mic_left = NULL;
-		fftw_plan* pfft_dct_mic_right = NULL;
-		fftw_plan* pfft_idct_mic_left = NULL;
-		fftw_plan* pfft_idct_mic_right = NULL;
-		fftw_plan* pfft_dct_speakers_left = NULL;
-		fftw_plan* pfft_dct_speakers_right = NULL;
-		fftw_plan* pfft_idct_speakers_left = NULL;
-		fftw_plan* pfft_idct_speakers_right = NULL;
+		fftw_plan pfft_dct_mic_left = NULL;
+		fftw_plan pfft_dct_mic_right = NULL;
+		fftw_plan pfft_idct_mic_left = NULL;
+		fftw_plan pfft_idct_mic_right = NULL;
+		fftw_plan pfft_dct_speakers_left = NULL;
+		fftw_plan pfft_dct_speakers_right = NULL;
+		fftw_plan pfft_idct_speakers_left = NULL;
+		fftw_plan pfft_idct_speakers_right = NULL;
 };
 
