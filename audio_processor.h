@@ -36,32 +36,32 @@ class audio_processor
 		UINT32 PointerMic = 0;
 		UINT32 * pPointerMic = &PointerMic;
 		UINT32 pPointer[2] = {0, 0};
-		UINT32* pread_frames_num = &read_frames_num;
+		UINT32* pread_frames_num = &read_frames_num ;
 		UINT32* pwritten_frames_num = &written_frames_num;
-		pAudioDevices pall_audio_devices;
-		thread * pInputThread;
-		thread * pOutputThread;
-		thread * pCableThread;
-		WAVEFORMATEX* pwfx;
+		pAudioDevices pall_audio_devices = NULL;
+		thread * pInputThread = NULL;
+		thread * pOutputThread = NULL;
+		thread * pCableThread = NULL;
+		WAVEFORMATEX* pwfx = NULL;
 		packet_sender sender;
 
 
-		DOUBLE * pfft_input_mic_left;
-		DOUBLE * pfft_input_mic_right;
-		DOUBLE * pfft_input_speakers_left;
-		DOUBLE * pfft_input_speakers_right;
-		DOUBLE * pfft_output_mic_left;
-		DOUBLE * pfft_output_mic_right;
-		DOUBLE * pfft_output_speakers_left;
-		DOUBLE * pfft_output_speakers_right;
+		DOUBLE * pfft_input_mic_left = NULL;
+		DOUBLE * pfft_input_mic_right = NULL;
+		DOUBLE * pfft_input_speakers_left = NULL;
+		DOUBLE * pfft_input_speakers_right = NULL;
+		DOUBLE * pfft_output_mic_left = NULL;
+		DOUBLE * pfft_output_mic_right = NULL;
+		DOUBLE * pfft_output_speakers_left = NULL;
+		DOUBLE * pfft_output_speakers_right = NULL;
 
-		fftw_plan* pfft_dct_mic_left;
-		fftw_plan* pfft_dct_mic_right;
-		fftw_plan* pfft_idct_mic_left;
-		fftw_plan* pfft_idct_mic_right;
-		fftw_plan* pfft_dct_speakers_left;
-		fftw_plan* pfft_dct_speakers_right;
-		fftw_plan* pfft_idct_speakers_left;
-		fftw_plan* pfft_idct_speakers_right;
+		fftw_plan* pfft_dct_mic_left = NULL;
+		fftw_plan* pfft_dct_mic_right = NULL;
+		fftw_plan* pfft_idct_mic_left = NULL;
+		fftw_plan* pfft_idct_mic_right = NULL;
+		fftw_plan* pfft_dct_speakers_left = NULL;
+		fftw_plan* pfft_dct_speakers_right = NULL;
+		fftw_plan* pfft_idct_speakers_left = NULL;
+		fftw_plan* pfft_idct_speakers_right = NULL;
 };
 

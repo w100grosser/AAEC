@@ -109,8 +109,10 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <HeapReserveSize>10000000</HeapReserveSize>
-      <StackReserveSize>10000000</StackReserveSize>
+      <HeapReserveSize>1000000000</HeapReserveSize>
+      <StackReserveSize>1000000000</StackReserveSize>
+      <HeapCommitSize>10000</HeapCommitSize>
+      <StackCommitSize>10000</StackCommitSize>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -143,6 +145,9 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="AAEC.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

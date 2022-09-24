@@ -5,9 +5,11 @@ int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe,
 
 	if (pinput_data != NULL && !pread[index])
 	{
-		pread[index] = false;
+		//printf("\nreading");
+
+		//pread[index] = false;
 		float* bData = (float*)pinput_data;
-		local_data_blocks_num[index] += *pnum_frames_availabe * format.Format.nChannels;
+		local_data_blocks_num[index] = *pnum_frames_availabe * format.Format.nChannels;
 		if (index == 0)
 		{
 			*pdata_blocks_num += local_data_blocks_num[index];
@@ -16,23 +18,20 @@ int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe,
 		{
 			ppointer[index] = 0;
 		}
-		for (int i = 0; i < *pnum_frames_availabe; i ++)
+		for (int i = 0; i < *pnum_frames_availabe ; i ++)
 		{
-			pTransferBuffer_left[ppointer[index] + i ] = bData[2*i+1];
-			pTransferBuffer_right[ppointer[index] + i ] = bData[2*i];
+			pTransferBuffer_left[ppointer[index] + i ] = bData[2*i];
+			pTransferBuffer_right[ppointer[index] + i ] = bData[2*i + 1];
 			*pread_frames_num = local_data_blocks_num[index] + 1;
-			transfer_buffer_left[(ppointer[index] + i)] = bData[2*i];
+			//transfer_buffer_left[(ppointer[index] + i)] = bData[2*i];
 		}
 		//sender.send_packet((char*)transfer_buffer_left, 44100);
 		//sender.send_packet((char*)&transfer_buffer_left[44100 / 4], 44100);
 		//sender.send_packet((char*)&transfer_buffer_left[2 * 44100 / 4], 44100);
 		//sender.send_packet((char*)&transfer_buffer_left[3 * 44100 / 4], 44100);
-		ppointer[index] += local_data_blocks_num[index] / 2;
-		if (local_data_blocks_num[index] >= 1024)
-		{
+			ppointer[index] += *pnum_frames_availabe;
 			pread[index] = true;
-			local_data_blocks_num[index] = 0;
-		}
+		//local_data_blocks_num[index] = 0;
 	}
 	else {
 		*pnum_frames_availabe = 0;
@@ -45,14 +44,15 @@ int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe
 
 	if (output_data != NULL && pread[0] && pread[1] && (*pwrite))
 	{
+		//printf("\n\t\twriting");
 
 		//printf("%d\n", *pnum_frames_availabe);
 		INT32 current[2];
 		*pwrite = false;
 		float* bData = (float*)output_data;
-		if (*pnum_frames_availabe > 1024)
+		if (*pnum_frames_availabe > local_data_blocks_num[0] / 2)
 		{
-			*pnum_frames_availabe = 1024;
+			*pnum_frames_availabe = local_data_blocks_num[0] / 2;
 		}
 		//if (*pnum_frames_availabe < *pdata_blocks_num / 2) {
 		//}
@@ -62,7 +62,7 @@ int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe
 
 		for (int i = 0; i < 2; i++)
 		{
-			current[i] = ppointer[i] - 1024;
+			current[i] = ppointer[i] - local_data_blocks_num[i] / 2;
 			if (current[i] < 0)
 			{
 				*pnum_frames_availabe = -current[i];
@@ -72,13 +72,12 @@ int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe
 
 		//for(int i = 0; i < 1024;i++ )
 		//{
-		//	pfft_input_mic_left[i] = pTransferBuffer_left[0][current[0] + i];
-		//	pfft_input_speakers_left[i] = pTransferBuffer_left[1][current[1] + i];
-		//	pfft_input_mic_right[i] = pTransferBuffer_right[0][current[0] + i];
-		//	pfft_input_speakers_right[i] = pTransferBuffer_right[1][current[1] + i];
+		//		pfft_input_mic_left[i] = pTransferBuffer_left[0][current[0] + i];
+		//		pfft_input_speakers_left[i] = pTransferBuffer_left[1][current[1] + i];
+		//		pfft_input_mic_right[i] = pTransferBuffer_right[0][current[0] + i];
+		//		pfft_input_speakers_right[i] = pTransferBuffer_right[1][current[1] + i];
 		//}
-
-		//fftw_execute(*pfft_dct_mic_left);
+		printf("\nfft");
 		//fftw_execute(*pfft_dct_mic_right);
 		//fftw_execute(*pfft_dct_speakers_left);
 		//fftw_execute(*pfft_dct_speakers_right);
@@ -107,7 +106,6 @@ int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe
 
 		//sender.send_packet((char*)bData, *pnum_frames_availabe * format.Format.nChannels);
 		pread[0] = false;
-		pread[1] = false;
 		*pwrite = true;
 
 	}
@@ -153,14 +151,6 @@ void audio_processor::init(pAudioDevices pall_audio_devices)
 
 	audio_processor::pall_audio_devices = pall_audio_devices;
 	//fftw_plan fftw_plan_r2r_1d(int n, double* in, double* out, fftw_r2r_kind kind, unsigned flags);
-	pfft_input_mic_left = (double*)fftw_malloc(sizeof(double) * 1024);
-	pfft_input_mic_right = (double*)fftw_malloc(sizeof(double) * 1024);
-	pfft_input_speakers_left = (double*)fftw_malloc(sizeof(double) * 1024);
-	pfft_input_speakers_right = (double*)fftw_malloc(sizeof(double) * 1024);
-	pfft_output_mic_left = (double*)fftw_malloc(sizeof(double) * 1024);
-	pfft_output_mic_right = (double*)fftw_malloc(sizeof(double) * 1024);
-	pfft_output_speakers_left = (double*)fftw_malloc(sizeof(double) * 1024);
-	pfft_output_speakers_right = (double*)fftw_malloc(sizeof(double) * 1024);
 	fftw_plan fft_dct_mic_left = fftw_plan_r2r_1d(1024, pfft_input_mic_left, pfft_output_mic_left, FFTW_REDFT10, FFTW_ESTIMATE);
 	fftw_plan fft_dct_mic_right = fftw_plan_r2r_1d(1024, pfft_input_mic_right, pfft_output_mic_right, FFTW_REDFT10, FFTW_ESTIMATE);
 	fftw_plan fft_idct_mic_left = fftw_plan_r2r_1d(1024, pfft_output_mic_left, pfft_input_mic_left, FFTW_REDFT01, FFTW_ESTIMATE);
@@ -169,6 +159,14 @@ void audio_processor::init(pAudioDevices pall_audio_devices)
 	fftw_plan fft_dct_speakers_right = fftw_plan_r2r_1d(1024, pfft_input_speakers_right, pfft_output_speakers_right, FFTW_REDFT10, FFTW_ESTIMATE);
 	fftw_plan fft_idct_speakers_left = fftw_plan_r2r_1d(1024, pfft_output_speakers_left, pfft_input_speakers_left, FFTW_REDFT01, FFTW_ESTIMATE);
 	fftw_plan fft_idct_speakers_right = fftw_plan_r2r_1d(1024, pfft_output_speakers_right, pfft_input_speakers_right, FFTW_REDFT01, FFTW_ESTIMATE);
+	pfft_input_mic_left = (DOUBLE*)fftw_malloc(sizeof(DOUBLE) * 1024);
+	pfft_input_mic_right = (DOUBLE*)fftw_malloc(sizeof(DOUBLE) * 1024);
+	pfft_input_speakers_left = (DOUBLE*)fftw_malloc(sizeof(DOUBLE) * 1024);
+	pfft_input_speakers_right = (DOUBLE*)fftw_malloc(sizeof(DOUBLE) * 1024);
+	pfft_output_mic_left = (DOUBLE*)fftw_malloc(sizeof(DOUBLE) * 1024);
+	pfft_output_mic_right = (DOUBLE*)fftw_malloc(sizeof(DOUBLE) * 1024);
+	pfft_output_speakers_left = (DOUBLE*)fftw_malloc(sizeof(DOUBLE) * 1024);
+	pfft_output_speakers_right = (DOUBLE*)fftw_malloc(sizeof(DOUBLE) * 1024);
 
 	pfft_dct_mic_left = &fft_dct_mic_left;
 	pfft_dct_mic_right = &fft_dct_mic_right;
