@@ -5,7 +5,7 @@ int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe,
 
 	if (pinput_data != NULL && !pread[index])
 	{
-		*pread = false;
+		pread[index] = false;
 		float* bData = (float*)pinput_data;
 		local_data_blocks_num[index] += *pnum_frames_availabe * format.Format.nChannels;
 		if (index == 0)
@@ -16,23 +16,23 @@ int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe,
 		{
 			ppointer[index] = 0;
 		}
-		for (int i = 0; i < *pnum_frames_availabe * format.Format.nChannels; i += 2)
+		for (int i = 0; i < *pnum_frames_availabe; i ++)
 		{
-			pTransferBuffer_left[ppointer[index] + i /2] = bData[i+1];
-			pTransferBuffer_right[ppointer[index] + i / 2] = bData[i];
+			pTransferBuffer_left[ppointer[index] + i ] = bData[2*i+1];
+			pTransferBuffer_right[ppointer[index] + i ] = bData[2*i];
 			*pread_frames_num = local_data_blocks_num[index] + 1;
-			transfer_buffer_left[(ppointer[index] + i)] = bData[i];
+			transfer_buffer_left[(ppointer[index] + i)] = bData[2*i];
 		}
 		//sender.send_packet((char*)transfer_buffer_left, 44100);
 		//sender.send_packet((char*)&transfer_buffer_left[44100 / 4], 44100);
 		//sender.send_packet((char*)&transfer_buffer_left[2 * 44100 / 4], 44100);
 		//sender.send_packet((char*)&transfer_buffer_left[3 * 44100 / 4], 44100);
+		ppointer[index] += local_data_blocks_num[index] / 2;
 		if (local_data_blocks_num[index] >= 1024)
 		{
 			pread[index] = true;
 			local_data_blocks_num[index] = 0;
 		}
-		ppointer[index] += local_data_blocks_num[index] /2;
 	}
 	else {
 		*pnum_frames_availabe = 0;
@@ -40,10 +40,10 @@ int audio_processor::read_audio(BYTE* pinput_data, UINT32* pnum_frames_availabe,
 	return 0;
 }
 
-int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32** ppointer, float** pTransferBuffer_left, float** pTransferBuffer_right)
+int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32* ppointer, float** pTransferBuffer_left, float** pTransferBuffer_right)
 {
 
-	if (output_data != NULL && pread[0] && pread[1])
+	if (output_data != NULL && pread[0] && pread[1] && (*pwrite))
 	{
 
 		//printf("%d\n", *pnum_frames_availabe);
@@ -62,10 +62,11 @@ int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe
 
 		for (int i = 0; i < 2; i++)
 		{
-			current[i] = *(ppointer[i]) - 1024;
+			current[i] = ppointer[i] - 1024;
 			if (current[i] < 0)
 			{
-				current[i] = 0;
+				*pnum_frames_availabe = -current[i];
+				current[i] = 44100 + current[i];
 			}
 		}
 
@@ -107,6 +108,7 @@ int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe
 		//sender.send_packet((char*)bData, *pnum_frames_availabe * format.Format.nChannels);
 		pread[0] = false;
 		pread[1] = false;
+		*pwrite = true;
 
 	}
 	else {
@@ -136,15 +138,18 @@ int audio_processor::SetFormat(WAVEFORMATEX* pwfx)
 
 void audio_processor::init(pAudioDevices pall_audio_devices)
 {
-	pPointer[0] = (UINT32*)fftw_malloc(sizeof(UINT32));
-	pPointer[1] = (UINT32*)fftw_malloc(sizeof(UINT32));
 
-	*pPointer[0] = 0;
-	*pPointer[1] = 0;
-	ptransfer_buffer_left[0] = (float*)fftw_malloc(sizeof(float) * 88200);
-	ptransfer_buffer_left[1] = (float*)fftw_malloc(sizeof(float) * 88200);
-	ptransfer_buffer_right[0] = (float*)fftw_malloc(sizeof(float) * 88200);
-	ptransfer_buffer_right[1] = (float*)fftw_malloc(sizeof(float) * 88200);
+
+	ptransfer_buffer_left[0] = (float*)fftw_malloc(8 * 88200);
+	ptransfer_buffer_left[1] = (float*)fftw_malloc(8 * 88200);
+	ptransfer_buffer_right[0] = (float*)fftw_malloc(8 * 88200);
+	ptransfer_buffer_right[1] = (float*)fftw_malloc(8 * 88200);
+
+	for (int i = 0; i < 88200; i++)
+	{
+
+		ptransfer_buffer_left[0][i], ptransfer_buffer_left[1][i], ptransfer_buffer_right[0][i], ptransfer_buffer_right[1][i] = 0;
+	}
 
 	audio_processor::pall_audio_devices = pall_audio_devices;
 	//fftw_plan fftw_plan_r2r_1d(int n, double* in, double* out, fftw_r2r_kind kind, unsigned flags);
@@ -375,7 +380,7 @@ void audio_processor::InputThreadFunction()
 					pData4 = NULL;  // Tell endpoint2local to write silence.
 				}
 
-				read_audio(pData4, &numFramesAvailable, pPointer[1], ptransfer_buffer_left[1], ptransfer_buffer_right[1], 1);
+				read_audio(pData4, &numFramesAvailable, pPointer, ptransfer_buffer_left[1], ptransfer_buffer_right[1], 1);
 
 				//printf("%d, %d", numFramesAvailable, pData4[0]);
 				hr = pall_audio_devices->pCaptureClient->ReleaseBuffer(numFramesAvailable);
@@ -476,7 +481,7 @@ void audio_processor::MicThreadFunction()
 					pData4 = NULL;  // Tell endpoint2local to write silence.
 				}
 
-				read_audio(pData4, &numFramesAvailable, pPointer[0], ptransfer_buffer_left[0], ptransfer_buffer_right[0], 0);
+				read_audio(pData4, &numFramesAvailable, pPointer, ptransfer_buffer_left[0], ptransfer_buffer_right[0], 0);
 
 				//printf("%d, %d", numFramesAvailable, pData4[0]);
 				hr = pall_audio_devices->pMicClient->ReleaseBuffer(numFramesAvailable);

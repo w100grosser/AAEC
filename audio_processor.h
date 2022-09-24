@@ -9,7 +9,7 @@ class audio_processor
 		void init(pAudioDevices pall_audio_devices);
 		void start(BOOL loopback, BOOL speakers);
 		INT read_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32* ppointer, float* pTransferBuffer_left, float* pTransferBuffer_right, int index);
-		INT write_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32** ppointer, float** pTransferBuffer_left, float** pTransferBuffer_right);
+		INT write_audio(BYTE* output_data, UINT32* pnum_frames_availabe, UINT32* ppointer, float** pTransferBuffer_left, float** pTransferBuffer_right);
 		INT process_audio(float* mic_data, float* speakers_data, float* output_data, INT32 pmic_data_pointer, INT32 pspeakers_data_pointer);
 		INT SetFormat(WAVEFORMATEX* pwfx);
 		void InputThreadFunction();
@@ -28,14 +28,14 @@ class audio_processor
 		UINT32 local_data_blocks_num[2] = {0, 0};
 		UINT32* pdata_blocks_num = &data_blocks_num;
 		BYTE read[2] = { true, true };
-		BYTE write = false;
+		BYTE write = true;
 		BYTE * pread = read;
 		BYTE * pwrite = &write;
 		UINT32 read_frames_num = 0;
 		UINT32 written_frames_num = 0;
 		UINT32 PointerMic = 0;
 		UINT32 * pPointerMic = &PointerMic;
-		UINT32 * pPointer[2];
+		UINT32 pPointer[2] = {0, 0};
 		UINT32* pread_frames_num = &read_frames_num;
 		UINT32* pwritten_frames_num = &written_frames_num;
 		pAudioDevices pall_audio_devices;
