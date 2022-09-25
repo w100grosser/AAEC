@@ -1,17 +1,8 @@
 #include "udp_sender.h"
 
-char* sendbuf;
 
-WSADATA wsaData;
-SOCKET ConnectSocket = INVALID_SOCKET;
-struct addrinfo* result = NULL,
-    * ptr = NULL,
-    hints;
 
-int iResult;
-const int BUFLEN = 88200;
-char recvbuf[BUFLEN];
-int recvbuflen = BUFLEN;
+
 
 void packet_sender::init(PCSTR PORT)
 {

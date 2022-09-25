@@ -58,7 +58,7 @@ int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe
 
 		for (int i = 0; i < 2; i++)
 		{
-			current[i] = ppointer[i] - local_data_blocks_num[i] / 2;
+			current[i] = ppointer[i] - 1024;
 			if (current[i] < 0)
 			{
 				*pnum_frames_availabe = -current[i];
@@ -77,14 +77,29 @@ int audio_processor::write_audio(BYTE* output_data, UINT32* pnum_frames_availabe
 		fftw_execute(pfft_dct_speakers_left);
 		fftw_execute(pfft_dct_speakers_right);
 
-		for (int i = 0; i < 1024; i++)
+		for (int i = 0; i < 10; i++)
 		{
 			pfft_output_speakers_left[i] = pfft_output_speakers_left[i] / 1024 / 2;
 			pfft_output_speakers_right[i] = pfft_output_speakers_right[i] / 1024 / 2;
-			pfft_output_mic_left[i] = pfft_output_mic_left[i] / 1024 / 2;
-			pfft_output_mic_right[i] = pfft_output_mic_right[i] / 1024 / 2;
+			pfft_output_mic_left[i] = 0;
+			pfft_output_mic_right[i] = 0;
 			//printf("\n%f\t\t%f", pfft_output_speakers_left[i], pfft_output_mic_left[i]);
+
 		}
+
+		for (int i = 10; i < 1024; i++)
+		{
+			pfft_output_speakers_left[i] = pfft_output_speakers_left[i] / 1024 / 2;
+			pfft_output_speakers_right[i] = pfft_output_speakers_right[i] / 1024 / 2;
+			pfft_output_mic_left[i] = pfft_output_mic_left[i] / 1024 / 2 - pfft_output_speakers_right[i] / 4;
+			pfft_output_mic_right[i] = pfft_output_mic_right[i] / 1024 / 2 - pfft_output_speakers_right[i] / 4;
+			//printf("\n%f\t\t%f", pfft_output_speakers_left[i], pfft_output_mic_left[i]);
+
+		}
+		psender->send_packet((char*)pfft_output_speakers_left, 1024* 8);
+		psender1->send_packet((char*)pfft_output_speakers_right, 1024 * 8);
+		psender2->send_packet((char*)pfft_output_mic_left, 1024 * 8);
+		psender3->send_packet((char*)pfft_output_mic_right, 1024 * 8);
 
 		fftw_execute(pfft_idct_mic_left);
 		fftw_execute(pfft_idct_mic_right);
@@ -139,6 +154,10 @@ int audio_processor::SetFormat(WAVEFORMATEX* pwfx)
 void audio_processor::init(pAudioDevices pall_audio_devices)
 {
 
+	psender->init("27015");
+	psender1->init("27016");
+	psender2->init("27017");
+	psender3->init("27018");
 
 	ptransfer_buffer_left[0] = (float*)fftw_malloc(8 * 88200);
 	ptransfer_buffer_left[1] = (float*)fftw_malloc(8 * 88200);

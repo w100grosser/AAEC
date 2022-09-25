@@ -18,5 +18,17 @@ public:
     void init(PCSTR PORT);
     int send_packet(char* data, int length);
     int close_connection();
+private: 
+
+    WSADATA wsaData;
+    SOCKET ConnectSocket = INVALID_SOCKET;
+    char* sendbuf;
+    struct addrinfo* result = NULL,
+        * ptr = NULL,
+        hints;
+
+    int iResult;
+    char recvbuf[88200];
+    int recvbuflen = 88200;
 
 };

@@ -44,6 +44,13 @@ class audio_processor
 		thread * pCableThread = NULL;
 		WAVEFORMATEX* pwfx = NULL;
 		packet_sender sender;
+		packet_sender sender1;
+		packet_sender sender2;
+		packet_sender sender3;
+		packet_sender* psender = &sender;
+		packet_sender* psender1= &sender1;
+		packet_sender* psender2= &sender2;
+		packet_sender* psender3= &sender3;
 
 
 		DOUBLE * pfft_input_mic_left = NULL;
